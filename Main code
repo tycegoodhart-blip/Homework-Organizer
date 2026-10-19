@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homework Organizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue.js 3 CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .checkbox-custom {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #cbd5e1;
+            border-radius: 50%;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .checkbox-custom:checked {
+            border-color: currentColor;
+            background-color: currentColor;
+        }
+
+        .task-enter-active,
+        .task-leave-active {
+            transition: all 0.25s ease;
+        }
+        .task-enter-from,
+        .task-leave-to {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden text-slate-800 antialiased selection:bg-sky-100 selection:text-sky-700">
+    <div id="app" class="flex h-full w-full bg-slate-100 overflow-hidden">
+        
+        <!-- SIDEBAR -->
+        <aside 
+            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+            class="fixed md:relative z-30 w-72 h-full bg-slate-900/95 backdrop-blur-md text-slate-300 flex flex-col justify-between transition-transform duration-300 ease-in-out border-r border-slate-800 shrink-0"
+        >
+            <div class="p-4 overflow-y-auto">
+                <!-- App Title -->
+                <div class="flex items-center justify-between mb-6 px-2 pt-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-sky-500/20">
+                            <i data-lucide="check-square" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-white tracking-tight leading-none text-base">Reminders</h1>
+                            <span class="text-xs text-slate-400 font-medium">Homework Organizer</span>
+                        </div>
+                    </div>
+                    <button @click="sidebarOpen = false" class="md:hidden text-slate-400 hover:text-white">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- Search Input -->
+                <div class="relative mb-6">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input 
+                        v-model="searchQuery"
+                        type="text" 
+                        placeholder="Search assignments..." 
+                        class="w-full bg-slate-800/80 text-xs text-slate-200 placeholder-slate-400 rounded-lg pl-9 pr-3 py-2 border border-slate-700/50 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    >
+                </div>
+
+                <!-- Smart Categories -->
+                <div class="grid grid-cols-2 gap-2 mb-6">
+                    <button 
+                        @click="activeCategory = 'all'" 
+                        :class="activeCategory === 'all' ? 'bg-slate-800 text-white border-slate-700' : 'bg-slate-800/40 text-slate-400 hover:bg-slate-800/70 border-transparent'"
+                        class="p-3 rounded-xl border flex flex-col justify-between transition-all text-left"
+                    >
+                        <div class="flex justify-between items-center w-full">
+                            <span class="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                                <i data-lucide="layers" class="w-4 h-4"></i>
+                            </span>
+                            <span class="text-lg font-bold text-white">{{ getTaskCount('all') }}</span>
+                        </div>
+                        <span class="text-xs font-semibold mt-2">All Tasks</span>
+                    </button>
+
+                    <button 
+                        @click="activeCategory = 'today'" 
+                        :class="activeCategory === 'today' ? 'bg-slate-800 text-white border-slate-700' : 'bg-slate-800/40 text-slate-400 hover:bg-slate-800/70 border-transparent'"
+                        class="p-3 rounded-xl border flex flex-col justify-between transition-all text-left"
+                    >
+                        <div class="flex justify-between items-center w-full">
+                            <span class="w-7 h-7 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                                <i data-lucide="sun" class="w-4 h-4"></i>
+                            </span>
+                            <span class="text-lg font-bold text-white">{{ getTaskCount('today') }}</span>
+                        </div>
+                        <span class="text-xs font-semibold mt-2">Due Today</span>
+                    </button>
+
+                    <button 
+                        @click="activeCategory = 'tomorrow'" 
+                        :class="activeCategory === 'tomorrow' ? 'bg-slate-800 text-white border-slate-700' : 'bg-slate-800/40 text-slate-400 hover:bg-slate-800/70 border-transparent'"
+                        class="p-3 rounded-xl border flex flex-col justify-between transition-all text-left"
+                    >
+                        <div class="flex justify-between items-center w-full">
+                            <span class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                <i data-lucide="clock" class="w-4 h-4"></i>
+                            </span>
+                            <span class="text-lg font-bold text-white">{{ getTaskCount('tomorrow') }}</span>
+                        </div>
+                        <span class="text-xs font-semibold mt-2">Due Tomorrow</span>
+                    </button>
+
+                    <button 
+                        @click="activeCategory = 'completed'" 
+                        :class="activeCategory === 'completed' ? 'bg-slate-800 text-white border-slate-700' : 'bg-slate-800/40 text-slate-400 hover:bg-slate-800/70 border-transparent'"
+                        class="p-3 rounded-xl border flex flex-col justify-between transition-all text-left"
+                    >
+                        <div class="flex justify-between items-center w-full">
+                            <span class="w-7 h-7 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                            </span>
+                            <span class="text-lg font-bold text-white">{{ getTaskCount('completed') }}</span>
+                        </div>
+                        <span class="text-xs font-semibold mt-2">Completed</span>
+                    </button>
+                </div>
+
+                <!-- Classes Section (Strict Ordered List) -->
+                <div class="space-y-1">
+                    <p class="px-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">My Classes</p>
+                    
+                    <button 
+                        v-for="cls in classes" 
+                        :key="cls.id"
+                        @click="activeCategory = cls.id"
+                        :class="activeCategory === cls.id ? 'bg-slate-800 text-white font-medium' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'"
+                        class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all group"
+                    >
+                        <div class="flex items-center gap-3 truncate">
+                            <span :class="cls.badgeBg" class="w-3 h-3 rounded-full shrink-0 ring-2 ring-slate-900 shadow-sm"></span>
+                            <span class="truncate">{{ cls.name }}</span>
+                        </div>
+                        <span class="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">
+                            {{ getClassTaskCount(cls.id) }}
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer Action -->
+            <div class="p-4 border-t border-slate-800/80">
+                <button 
+                    @click="openNewTaskModal()" 
+                    class="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-medium py-2.5 px-4 rounded-xl shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
+                >
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    <span>Add Assignment</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col h-full bg-slate-50 overflow-hidden relative">
+            <!-- Top Bar -->
+            <header class="h-16 border-b border-slate-200 bg-white/80 backdrop-blur-md px-4 md:px-8 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <button @click="sidebarOpen = true" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <span v-if="activeClass" :class="activeClass.badgeBg" class="w-3.5 h-3.5 rounded-full inline-block"></span>
+                            {{ currentListTitle }}
+                        </h2>
+                        <p class="text-xs text-slate-500 hidden sm:block">{{ currentListSubtitle }}</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold px-3 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200">
+                        {{ filteredTasks.length }} {{ filteredTasks.length === 1 ? 'task' : 'tasks' }}
+                    </span>
+                    <button 
+                        @click="openNewTaskModal()"
+                        class="p-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl shadow-md transition-colors"
+                        title="Add Task"
+                    >
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Task List View -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 space-y-3">
+                
+                <!-- Empty State -->
+                <div v-if="filteredTasks.length === 0" class="flex flex-col items-center justify-center h-64 text-center">
+                    <div class="w-16 h-16 rounded-full bg-sky-50 text-sky-500 flex items-center justify-center mb-4 shadow-inner">
+                        <i data-lucide="check-circle" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-700">No assignments found</h3>
+                    <p class="text-xs text-slate-400 max-w-sm mt-1">You're all caught up or no tasks match the active selection.</p>
+                    <button 
+                        @click="openNewTaskModal()" 
+                        class="mt-4 px-4 py-2 text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 font-semibold rounded-xl transition-colors"
+                    >
+                        Add New Task
+                    </button>
+                </div>
+
+                <!-- Task Cards -->
+                <transition-group name="task">
+                    <div 
+                        v-for="task in filteredTasks" 
+                        :key="task.id"
+                        :class="[
+                            task.completed ? 'bg-slate-100/80 border-slate-200 opacity-60' : 'bg-white border-slate-200/80 shadow-sm hover:shadow-md',
+                            'p-4 rounded-2xl border transition-all duration-200 flex items-start justify-between gap-4 group'
+                        ]"
+                    >
+                        <div class="flex items-start gap-3 flex-1 min-w-0">
+                            <!-- Checkbox -->
+                            <button 
+                                @click="toggleTaskComplete(task)"
+                                class="mt-0.5 shrink-0 transition-transform active:scale-90"
+                            >
+                                <div 
+                                    :style="{ color: getClassColorHex(task.classId) }"
+                                    :class="[
+                                        'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
+                                        task.completed ? 'bg-current border-current text-white' : 'border-slate-300 hover:border-current'
+                                    ]"
+                                >
+                                    <i v-if="task.completed" data-lucide="check" class="w-3.5 h-3.5 stroke-[3] text-white"></i>
+                                </div>
+                            </button>
+
+                            <!-- Information -->
+                            <div class="flex-1 min-w-0">
+                                <span 
+                                    :class="[task.completed ? 'line-through text-slate-400' : 'text-slate-800']"
+                                    class="font-semibold text-sm leading-snug break-words block"
+                                >
+                                    {{ task.title }}
+                                </span>
+
+                                <p v-if="task.notes" class="text-xs text-slate-500 mt-1 line-clamp-2">
+                                    {{ task.notes }}
+                                </p>
+
+                                <div class="flex items-center gap-2 mt-2 flex-wrap">
+                                    <!-- Subject Badge -->
+                                    <span 
+                                        :class="getClassBadgeStyle(task.classId)"
+                                        class="text-[11px] font-medium px-2 py-0.5 rounded-md flex items-center gap-1.5"
+                                    >
+                                        <span :class="getClassDotBg(task.classId)" class="w-2 h-2 rounded-full"></span>
+                                        {{ getClassName(task.classId) }}
+                                    </span>
+
+                                    <!-- Due Date Tag -->
+                                    <span 
+                                        :class="getDueDateTagStyle(task.dueDate)"
+                                        class="text-[11px] font-medium px-2 py-0.5 rounded-md flex items-center gap-1"
+                                    >
+                                        <i data-lucide="calendar" class="w-3 h-3"></i>
+                                        {{ formatDueDateLabel(task.dueDate) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                                @click="editTask(task)" 
+                                class="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
+                            >
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                            <button 
+                                @click="deleteTask(task.id)" 
+                                class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </transition-group>
+            </div>
+        </main>
+
+        <!-- TASK CREATION / EDIT MODAL -->
+        <div 
+            v-if="showModal" 
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+            @click.self="closeModal()"
+        >
+            <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100">
+                <!-- Header -->
+                <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-bold text-slate-800 text-base">
+                        {{ isEditing ? 'Edit Assignment' : 'New Assignment' }}
+                    </h3>
+                    <button @click="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-full">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- Form -->
+                <form @submit.prevent="saveTask()" class="p-6 space-y-4">
+                    <!-- Title -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Assignment Title</label>
+                        <input 
+                            v-model="form.title" 
+                            type="text" 
+                            required 
+                            placeholder="e.g. Read Chapter 4, Problem Set #3"
+                            class="w-full text-sm font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
+                        >
+                    </div>
+
+                    <!-- Subject / Class Selector -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Class / Subject</label>
+                        <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
+                            <button 
+                                v-for="cls in classes" 
+                                :key="cls.id"
+                                type="button"
+                                @click="form.classId = cls.id"
+                                :class="[
+                                    form.classId === cls.id ? 'ring-2 ring-sky-500 bg-sky-50/50 font-semibold' : 'bg-slate-50 hover:bg-slate-100 border-slate-200',
+                                    'p-2 rounded-xl border flex items-center gap-2 text-xs text-left transition-all'
+                                ]"
+                            >
+                                <span :class="cls.badgeBg" class="w-2.5 h-2.5 rounded-full shrink-0"></span>
+                                <span class="truncate text-slate-700">{{ cls.name }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Due Date Options (Tomorrow & Calendar options requested) -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Due Date</label>
+                        
+                        <div class="flex items-center gap-2 mb-2">
+                            <button 
+                                type="button" 
+                                @click="setFormDateShortcut('tomorrow')"
+                                :class="dateShortcut === 'tomorrow' ? 'bg-sky-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                class="flex-1 py-2 px-3 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                            >
+                                <i data-lucide="arrow-right-circle" class="w-3.5 h-3.5"></i>
+                                Tomorrow
+                            </button>
+
+                            <button 
+                                type="button" 
+                                @click="dateShortcut = 'custom'"
+                                :class="dateShortcut === 'custom' ? 'bg-sky-500 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                class="flex-1 py-2 px-3 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                            >
+                                <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                                Calendar Picker
+                            </button>
+                        </div>
+
+                        <!-- Date Input Box -->
+                        <div class="relative">
+                            <i data-lucide="calendar-days" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input 
+                                v-model="form.dueDate" 
+                                type="date" 
+                                required
+                                class="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Notes Input -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Notes / Link (Optional)</label>
+                        <textarea 
+                            v-model="form.notes" 
+                            rows="2" 
+                            placeholder="Add page numbers or instructions..."
+                            class="w-full text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all resize-none"
+                        ></textarea>
+                    </div>
+
+                    <!-- Modal Actions -->
+                    <div class="flex items-center justify-end gap-2 pt-2">
+                        <button 
+                            type="button" 
+                            @click="closeModal()" 
+                            class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="px-5 py-2 text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white rounded-xl shadow-md transition-all active:scale-95"
+                        >
+                            {{ isEditing ? 'Save Changes' : 'Create Assignment' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function initApp() {
+            if (typeof Vue === 'undefined') {
+                setTimeout(initApp, 50);
+                return;
+            }
+
+            const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
+
+            createApp({
+                setup() {
+                    // Ordered Classes list with colors specified in user prompt
+                    const classes = [
+                        { id: 'physics', name: 'CP Physics', colorHex: '#10b981', badgeBg: 'bg-emerald-500', textStyle: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+                        { id: 'calculus', name: 'AP Calculus BC', colorHex: '#ef4444', badgeBg: 'bg-red-500', textStyle: 'text-red-700 bg-red-50 border-red-200' },
+                        { id: 'media', name: 'Interactive Media Design', colorHex: '#38bdf8', badgeBg: 'bg-sky-400', textStyle: 'text-sky-800 bg-sky-50 border-sky-200' },
+                        { id: 'gov', name: 'AP Government', colorHex: '#64748b', badgeBg: 'bg-slate-500', textStyle: 'text-slate-700 bg-slate-100 border-slate-300' },
+                        { id: 'hispanic', name: 'Hispanic Cultures and Civilizations', colorHex: '#a855f7', badgeBg: 'bg-purple-500', textStyle: 'text-purple-700 bg-purple-50 border-purple-200' },
+                        { id: 'lit', name: 'Western Lit and Thought', colorHex: '#eab308', badgeBg: 'bg-amber-400', textStyle: 'text-amber-800 bg-amber-50 border-amber-200' }
+                    ];
+
+                    const sidebarOpen = ref(false);
+                    const activeCategory = ref('all');
+                    const searchQuery = ref('');
+                    const showModal = ref(false);
+                    const isEditing = ref(false);
+                    const editingTaskId = ref(null);
+                    const dateShortcut = ref('tomorrow');
+
+                    function getTodayISO() {
+                        const today = new Date();
+                        return today.toISOString().split('T')[0];
+                    }
+
+                    function getTomorrowISO() {
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        return tomorrow.toISOString().split('T')[0];
+                    }
+
+                    const form = ref({
+                        title: '',
+                        classId: 'physics',
+                        dueDate: getTomorrowISO(),
+                        notes: ''
+                    });
+
+                    const defaultSampleTasks = [
+                        { id: '1', title: 'Kinematics Equations Worksheet', classId: 'physics', dueDate: getTodayISO(), notes: 'Complete problems 1 to 15', completed: false },
+                        { id: '2', title: 'AP Calc BC Taylor Series Practice', classId: 'calculus', dueDate: getTomorrowISO(), notes: 'Review error bounds section', completed: false },
+                        { id: '3', title: 'UI/UX Wireframe Draft', classId: 'media', dueDate: getTomorrowISO(), notes: 'Export prototype for review', completed: false },
+                        { id: '4', title: 'SCOTUS Case Brief', classId: 'gov', dueDate: getTodayISO(), notes: 'Summarize oral arguments', completed: false },
+                        { id: '5', title: 'Read Don Quixote Chapter 4-6', classId: 'hispanic', dueDate: getTomorrowISO(), notes: 'Prepare 2 discussion topics', completed: false },
+                        { id: '6', title: 'Socratic Seminar Essay Outline', classId: 'lit', dueDate: getTomorrowISO(), notes: 'Focus on thematic analysis', completed: false }
+                    ];
+
+                    const tasks = ref([]);
+
+                    onMounted(() => {
+                        const saved = localStorage.getItem('study_organizer_tasks_v2');
+                        if (saved) {
+                            try {
+                                tasks.value = JSON.parse(saved);
+                            } catch (e) {
+                                tasks.value = defaultSampleTasks;
+                            }
+                        } else {
+                            tasks.value = defaultSampleTasks;
+                        }
+                        refreshIcons();
+                    });
+
+                    watch(tasks, (newVal) => {
+                        localStorage.setItem('study_organizer_tasks_v2', JSON.stringify(newVal));
+                    }, { deep: true });
+
+                    function refreshIcons() {
+                        nextTick(() => {
+                            if (window.lucide) {
+                                window.lucide.createIcons();
+                            }
+                        });
+                    }
+
+                    watch([activeCategory, showModal, tasks], () => {
+                        refreshIcons();
+                    });
+
+                    const activeClass = computed(() => classes.find(c => c.id === activeCategory.value));
+
+                    const currentListTitle = computed(() => {
+                        if (activeClass.value) return activeClass.value.name;
+                        switch (activeCategory.value) {
+                            case 'all': return 'All Assignments';
+                            case 'today': return 'Due Today';
+                            case 'tomorrow': return 'Due Tomorrow';
+                            case 'completed': return 'Completed Tasks';
+                            default: return 'Assignments';
+                        }
+                    });
+
+                    const currentListSubtitle = computed(() => {
+                        if (activeClass.value) return `Filtered by ${activeClass.value.name}`;
+                        switch (activeCategory.value) {
+                            case 'all': return 'All active homework tasks';
+                            case 'today': return 'Assignments due today';
+                            case 'tomorrow': return 'Assignments due tomorrow';
+                            case 'completed': return 'Finished tasks';
+                            default: return '';
+                        }
+                    });
+
+                    const filteredTasks = computed(() => {
+                        const todayStr = getTodayISO();
+                        const tomorrowStr = getTomorrowISO();
+
+                        return tasks.value.filter(task => {
+                            if (searchQuery.value.trim() !== '') {
+                                const q = searchQuery.value.toLowerCase();
+                                const matchTitle = task.title.toLowerCase().includes(q);
+                                const matchNotes = task.notes && task.notes.toLowerCase().includes(q);
+                                if (!matchTitle && !matchNotes) return false;
+                            }
+
+                            if (activeCategory.value === 'all') return !task.completed;
+                            if (activeCategory.value === 'today') return !task.completed && task.dueDate === todayStr;
+                            if (activeCategory.value === 'tomorrow') return !task.completed && task.dueDate === tomorrowStr;
+                            if (activeCategory.value === 'completed') return task.completed;
+                            return task.classId === activeCategory.value && !task.completed;
+                        }).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+                    });
+
+                    function getTaskCount(cat) {
+                        const todayStr = getTodayISO();
+                        const tomorrowStr = getTomorrowISO();
+                        if (cat === 'all') return tasks.value.filter(t => !t.completed).length;
+                        if (cat === 'today') return tasks.value.filter(t => !t.completed && t.dueDate === todayStr).length;
+                        if (cat === 'tomorrow') return tasks.value.filter(t => !t.completed && t.dueDate === tomorrowStr).length;
+                        if (cat === 'completed') return tasks.value.filter(t => t.completed).length;
+                        return 0;
+                    }
+
+                    function getClassTaskCount(classId) {
+                        return tasks.value.filter(t => !t.completed && t.classId === classId).length;
+                    }
+
+                    function getClassName(classId) {
+                        const found = classes.find(c => c.id === classId);
+                        return found ? found.name : classId;
+                    }
+
+                    function getClassBadgeStyle(classId) {
+                        const found = classes.find(c => c.id === classId);
+                        return found ? `${found.textStyle} border` : 'bg-slate-100 text-slate-700';
+                    }
+
+                    function getClassDotBg(classId) {
+                        const found = classes.find(c => c.id === classId);
+                        return found ? found.badgeBg : 'bg-slate-400';
+                    }
+
+                    function getClassColorHex(classId) {
+                        const found = classes.find(c => c.id === classId);
+                        return found ? found.colorHex : '#3b82f6';
+                    }
+
+                    function formatDueDateLabel(dateStr) {
+                        if (!dateStr) return '';
+                        const todayStr = getTodayISO();
+                        const tomorrowStr = getTomorrowISO();
+
+                        if (dateStr === todayStr) return 'Due Today';
+                        if (dateStr === tomorrowStr) return 'Due Tomorrow';
+
+                        const [year, month, day] = dateStr.split('-');
+                        const dateObj = new Date(year, month - 1, day);
+                        return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }
+
+                    function getDueDateTagStyle(dateStr) {
+                        const todayStr = getTodayISO();
+                        const tomorrowStr = getTomorrowISO();
+
+                        if (dateStr < todayStr) return 'bg-red-100 text-red-700 border border-red-200 font-semibold';
+                        if (dateStr === todayStr) return 'bg-amber-100 text-amber-800 border border-amber-200 font-semibold';
+                        if (dateStr === tomorrowStr) return 'bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold';
+                        return 'bg-slate-100 text-slate-600 border border-slate-200';
+                    }
+
+                    function toggleTaskComplete(task) {
+                        task.completed = !task.completed;
+                    }
+
+                    function deleteTask(taskId) {
+                        tasks.value = tasks.value.filter(t => t.id !== taskId);
+                    }
+
+                    function openNewTaskModal() {
+                        isEditing.value = false;
+                        editingTaskId.value = null;
+                        dateShortcut.value = 'tomorrow';
+                        form.value = {
+                            title: '',
+                            classId: activeClass.value ? activeClass.value.id : 'physics',
+                            dueDate: getTomorrowISO(),
+                            notes: ''
+                        };
+                        showModal.value = true;
+                        refreshIcons();
+                    }
+
+                    function editTask(task) {
+                        isEditing.value = true;
+                        editingTaskId.value = task.id;
+                        form.value = {
+                            title: task.title,
+                            classId: task.classId,
+                            dueDate: task.dueDate,
+                            notes: task.notes || ''
+                        };
+                        dateShortcut.value = (task.dueDate === getTomorrowISO()) ? 'tomorrow' : 'custom';
+                        showModal.value = true;
+                        refreshIcons();
+                    }
+
+                    function closeModal() {
+                        showModal.value = false;
+                    }
+
+                    function setFormDateShortcut(shortcut) {
+                        dateShortcut.value = shortcut;
+                        if (shortcut === 'tomorrow') {
+                            form.value.dueDate = getTomorrowISO();
+                        }
+                    }
+
+                    function saveTask() {
+                        if (!form.value.title.trim()) return;
+
+                        if (isEditing.value) {
+                            const idx = tasks.value.findIndex(t => t.id === editingTaskId.value);
+                            if (idx !== -1) {
+                                tasks.value[idx] = {
+                                    ...tasks.value[idx],
+                                    title: form.value.title.trim(),
+                                    classId: form.value.classId,
+                                    dueDate: form.value.dueDate,
+                                    notes: form.value.notes.trim()
+                                };
+                            }
+                        } else {
+                            tasks.value.unshift({
+                                id: Date.now().toString(),
+                                title: form.value.title.trim(),
+                                classId: form.value.classId,
+                                dueDate: form.value.dueDate,
+                                notes: form.value.notes.trim(),
+                                completed: false
+                            });
+                        }
+
+                        closeModal();
+                    }
+
+                    return {
+                        classes,
+                        sidebarOpen,
+                        activeCategory,
+                        activeClass,
+                        searchQuery,
+                        showModal,
+                        isEditing,
+                        dateShortcut,
+                        form,
+                        filteredTasks,
+                        currentListTitle,
+                        currentListSubtitle,
+                        getTaskCount,
+                        getClassTaskCount,
+                        getClassName,
+                        getClassBadgeStyle,
+                        getClassDotBg,
+                        getClassColorHex,
+                        formatDueDateLabel,
+                        getDueDateTagStyle,
+                        toggleTaskComplete,
+                        deleteTask,
+                        openNewTaskModal,
+                        editTask,
+                        closeModal,
+                        setFormDateShortcut,
+                        saveTask
+                    };
+                }
+            }).mount('#app');
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
