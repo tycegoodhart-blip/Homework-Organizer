@@ -75,7 +75,7 @@
                 <div class="flex items-center justify-between mb-6 px-2 pt-2">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-sky-500/20">
-                            <i data-lucide="check-square" class="w-5 h-5"></i>
+                            <i data-lucide="bell" class="w-5 h-5"></i>
                         </div>
                         <div>
                             <h1 class="font-bold text-white tracking-tight leading-none text-base">Reminders</h1>
@@ -246,8 +246,8 @@
                         v-for="task in filteredTasks" 
                         :key="task.id"
                         :class="[
-                            task.completed ? 'bg-slate-100/80 border-slate-200 opacity-60' : 'bg-white border-slate-200/80 shadow-sm hover:shadow-md',
-                            'p-4 rounded-2xl border transition-all duration-200 flex items-start justify-between gap-4 group'
+                            getTaskCardStyle(task),
+                            'p-4 rounded-2xl border shadow-sm transition-all duration-200 flex items-start justify-between gap-4 group'
                         ]"
                     >
                         <div class="flex items-start gap-3 flex-1 min-w-0">
@@ -260,7 +260,7 @@
                                     :style="{ color: getClassColorHex(task.classId) }"
                                     :class="[
                                         'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
-                                        task.completed ? 'bg-current border-current text-white' : 'border-slate-300 hover:border-current'
+                                        task.completed ? 'bg-current border-current text-white' : 'border-slate-400 hover:border-current bg-white/70'
                                     ]"
                                 >
                                     <i v-if="task.completed" data-lucide="check" class="w-3.5 h-3.5 stroke-[3] text-white"></i>
@@ -270,25 +270,27 @@
                             <!-- Information -->
                             <div class="flex-1 min-w-0">
                                 <span 
-                                    :class="[task.completed ? 'line-through text-slate-400' : 'text-slate-800']"
+                                    :class="[task.completed ? 'line-through text-slate-400' : 'text-slate-900']"
                                     class="font-semibold text-sm leading-snug break-words block"
                                 >
                                     {{ task.title }}
                                 </span>
 
-                                <p v-if="task.notes" class="text-xs text-slate-500 mt-1 line-clamp-2">
+                                <p v-if="task.notes" :class="getClassSubtextColor(task.classId)" class="text-xs mt-1 line-clamp-2">
                                     {{ task.notes }}
                                 </p>
 
-                                <div class="flex items-center gap-2 mt-2 flex-wrap">
-                                    <!-- Subject Badge -->
+                                <div class="flex items-center gap-2 mt-2.5 flex-wrap">
+                                    <!-- Clean Class Name Label (replaces heavy colored badge) -->
                                     <span 
-                                        :class="getClassBadgeStyle(task.classId)"
-                                        class="text-[11px] font-medium px-2 py-0.5 rounded-md flex items-center gap-1.5"
+                                        :class="getClassLabelStyle(task.classId)"
+                                        class="text-[11px] flex items-center gap-1.5"
                                     >
-                                        <span :class="getClassDotBg(task.classId)" class="w-2 h-2 rounded-full"></span>
+                                        <span :class="getClassDotBg(task.classId)" class="w-2 h-2 rounded-full inline-block"></span>
                                         {{ getClassName(task.classId) }}
                                     </span>
+
+                                    <span class="text-slate-300 text-[10px]">•</span>
 
                                     <!-- Due Date Tag -->
                                     <span 
@@ -306,13 +308,13 @@
                         <div class="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
                                 @click="editTask(task)" 
-                                class="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
+                                class="p-1.5 text-slate-500 hover:text-sky-700 hover:bg-white/60 rounded-lg transition-colors"
                             >
                                 <i data-lucide="pencil" class="w-4 h-4"></i>
                             </button>
                             <button 
                                 @click="deleteTask(task.id)" 
-                                class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                class="p-1.5 text-slate-500 hover:text-red-700 hover:bg-white/60 rounded-lg transition-colors"
                             >
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
@@ -455,14 +457,68 @@
 
             createApp({
                 setup() {
-                    // Ordered Classes list with colors specified in user prompt
+                    // Ordered Classes list with pale card backgrounds and color tokens
                     const classes = [
-                        { id: 'physics', name: 'CP Physics', colorHex: '#10b981', badgeBg: 'bg-emerald-500', textStyle: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-                        { id: 'calculus', name: 'AP Calculus BC', colorHex: '#ef4444', badgeBg: 'bg-red-500', textStyle: 'text-red-700 bg-red-50 border-red-200' },
-                        { id: 'media', name: 'Interactive Media Design', colorHex: '#38bdf8', badgeBg: 'bg-sky-400', textStyle: 'text-sky-800 bg-sky-50 border-sky-200' },
-                        { id: 'gov', name: 'AP Government', colorHex: '#64748b', badgeBg: 'bg-slate-500', textStyle: 'text-slate-700 bg-slate-100 border-slate-300' },
-                        { id: 'hispanic', name: 'Hispanic Cultures and Civilizations', colorHex: '#a855f7', badgeBg: 'bg-purple-500', textStyle: 'text-purple-700 bg-purple-50 border-purple-200' },
-                        { id: 'lit', name: 'Western Lit and Thought', colorHex: '#eab308', badgeBg: 'bg-amber-400', textStyle: 'text-amber-800 bg-amber-50 border-amber-200' }
+                        { 
+                            id: 'physics', 
+                            name: 'CP Physics', 
+                            colorHex: '#10b981', 
+                            badgeBg: 'bg-emerald-500', 
+                            cardBg: 'bg-emerald-50/80 border-emerald-200/90 hover:bg-emerald-100/50',
+                            cardCompletedBg: 'bg-emerald-50/30 border-emerald-200/40 opacity-60',
+                            subtextColor: 'text-emerald-800/80',
+                            labelStyle: 'text-emerald-900 font-semibold'
+                        },
+                        { 
+                            id: 'calculus', 
+                            name: 'AP Calculus BC', 
+                            colorHex: '#ef4444', 
+                            badgeBg: 'bg-red-500', 
+                            cardBg: 'bg-red-50/80 border-red-200/90 hover:bg-red-100/50',
+                            cardCompletedBg: 'bg-red-50/30 border-red-200/40 opacity-60',
+                            subtextColor: 'text-red-800/80',
+                            labelStyle: 'text-red-900 font-semibold'
+                        },
+                        { 
+                            id: 'media', 
+                            name: 'Interactive Media Design', 
+                            colorHex: '#0284c7', 
+                            badgeBg: 'bg-sky-400', 
+                            cardBg: 'bg-sky-50/80 border-sky-200/90 hover:bg-sky-100/50',
+                            cardCompletedBg: 'bg-sky-50/30 border-sky-200/40 opacity-60',
+                            subtextColor: 'text-sky-800/80',
+                            labelStyle: 'text-sky-900 font-semibold'
+                        },
+                        { 
+                            id: 'gov', 
+                            name: 'AP Government', 
+                            colorHex: '#64748b', 
+                            badgeBg: 'bg-slate-500', 
+                            cardBg: 'bg-slate-100/90 border-slate-300 hover:bg-slate-200/60',
+                            cardCompletedBg: 'bg-slate-100/40 border-slate-200 opacity-60',
+                            subtextColor: 'text-slate-600',
+                            labelStyle: 'text-slate-800 font-semibold'
+                        },
+                        { 
+                            id: 'hispanic', 
+                            name: 'Hispanic Cultures and Civilizations', 
+                            colorHex: '#a855f7', 
+                            badgeBg: 'bg-purple-500', 
+                            cardBg: 'bg-purple-50/80 border-purple-200/90 hover:bg-purple-100/50',
+                            cardCompletedBg: 'bg-purple-50/30 border-purple-200/40 opacity-60',
+                            subtextColor: 'text-purple-800/80',
+                            labelStyle: 'text-purple-900 font-semibold'
+                        },
+                        { 
+                            id: 'lit', 
+                            name: 'Western Lit and Thought', 
+                            colorHex: '#d97706', 
+                            badgeBg: 'bg-amber-400', 
+                            cardBg: 'bg-amber-50/90 border-amber-200/90 hover:bg-amber-100/50',
+                            cardCompletedBg: 'bg-amber-50/30 border-amber-200/40 opacity-60',
+                            subtextColor: 'text-amber-800/80',
+                            labelStyle: 'text-amber-900 font-semibold'
+                        }
                     ];
 
                     const sidebarOpen = ref(false);
@@ -491,19 +547,12 @@
                         notes: ''
                     });
 
-                    const defaultSampleTasks = [
-                        { id: '1', title: 'Kinematics Equations Worksheet', classId: 'physics', dueDate: getTodayISO(), notes: 'Complete problems 1 to 15', completed: false },
-                        { id: '2', title: 'AP Calc BC Taylor Series Practice', classId: 'calculus', dueDate: getTomorrowISO(), notes: 'Review error bounds section', completed: false },
-                        { id: '3', title: 'UI/UX Wireframe Draft', classId: 'media', dueDate: getTomorrowISO(), notes: 'Export prototype for review', completed: false },
-                        { id: '4', title: 'SCOTUS Case Brief', classId: 'gov', dueDate: getTodayISO(), notes: 'Summarize oral arguments', completed: false },
-                        { id: '5', title: 'Read Don Quixote Chapter 4-6', classId: 'hispanic', dueDate: getTomorrowISO(), notes: 'Prepare 2 discussion topics', completed: false },
-                        { id: '6', title: 'Socratic Seminar Essay Outline', classId: 'lit', dueDate: getTomorrowISO(), notes: 'Focus on thematic analysis', completed: false }
-                    ];
+                    const defaultSampleTasks = [];
 
                     const tasks = ref([]);
 
                     onMounted(() => {
-                        const saved = localStorage.getItem('study_organizer_tasks_v2');
+                        const saved = localStorage.getItem('study_organizer_tasks_v3');
                         if (saved) {
                             try {
                                 tasks.value = JSON.parse(saved);
@@ -517,7 +566,7 @@
                     });
 
                     watch(tasks, (newVal) => {
-                        localStorage.setItem('study_organizer_tasks_v2', JSON.stringify(newVal));
+                        localStorage.setItem('study_organizer_tasks_v3', JSON.stringify(newVal));
                     }, { deep: true });
 
                     function refreshIcons() {
@@ -595,9 +644,20 @@
                         return found ? found.name : classId;
                     }
 
-                    function getClassBadgeStyle(classId) {
+                    function getTaskCardStyle(task) {
+                        const found = classes.find(c => c.id === task.classId);
+                        if (!found) return 'bg-white border-slate-200 shadow-sm';
+                        return task.completed ? found.cardCompletedBg : found.cardBg;
+                    }
+
+                    function getClassLabelStyle(classId) {
                         const found = classes.find(c => c.id === classId);
-                        return found ? `${found.textStyle} border` : 'bg-slate-100 text-slate-700';
+                        return found ? found.labelStyle : 'text-slate-600 font-medium';
+                    }
+
+                    function getClassSubtextColor(classId) {
+                        const found = classes.find(c => c.id === classId);
+                        return found ? found.subtextColor : 'text-slate-500';
                     }
 
                     function getClassDotBg(classId) {
@@ -627,10 +687,10 @@
                         const todayStr = getTodayISO();
                         const tomorrowStr = getTomorrowISO();
 
-                        if (dateStr < todayStr) return 'bg-red-100 text-red-700 border border-red-200 font-semibold';
-                        if (dateStr === todayStr) return 'bg-amber-100 text-amber-800 border border-amber-200 font-semibold';
-                        if (dateStr === tomorrowStr) return 'bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold';
-                        return 'bg-slate-100 text-slate-600 border border-slate-200';
+                        if (dateStr < todayStr) return 'bg-red-100/90 text-red-800 border border-red-200 font-semibold';
+                        if (dateStr === todayStr) return 'bg-amber-100/90 text-amber-900 border border-amber-200 font-semibold';
+                        if (dateStr === tomorrowStr) return 'bg-emerald-100/90 text-emerald-900 border border-emerald-200 font-semibold';
+                        return 'bg-white/70 text-slate-700 border border-slate-200/80';
                     }
 
                     function toggleTaskComplete(task) {
@@ -724,7 +784,9 @@
                         getTaskCount,
                         getClassTaskCount,
                         getClassName,
-                        getClassBadgeStyle,
+                        getTaskCardStyle,
+                        getClassLabelStyle,
+                        getClassSubtextColor,
                         getClassDotBg,
                         getClassColorHex,
                         formatDueDateLabel,
